@@ -1,0 +1,13 @@
+node_modules/
+playwright-report/
+dist/
+build/
+build-scripts/
+doc_generator/
+eslint-surveyjs/
+example/
+examples/
+examples_test/
+.gitignore
+webpack.config.js
+index.js
