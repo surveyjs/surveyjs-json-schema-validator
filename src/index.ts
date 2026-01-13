@@ -3,29 +3,27 @@ import survey from "survey-core";
 async function main() {
 //   console.info("Starting the application...");
 
-
-
-
   const config = {
-"pages": [
-{
-"name": "page1",
-"elements": [
-{
-"type": "text",
-"name": "question1"
-},
-{
-"type": "text",
-"name": "question2"
-}
-]
-}
-],
-"headerView": "advanced"
-};
+    "pages": [
+      {
+        "name": "page1",
+        "elements": [
+          {
+            "type": "text",
+            "name": "question1"
+          },
+          {
+            "type": "text",
+            "name": "question2"
+          }
+        ]
 
-  const model = new survey.SurveyModel(config)
+      }
+    ],
+    "headerView": "advanced"
+  };
+
+  const model = new survey.SurveyModel(config);
 }
 
 main();

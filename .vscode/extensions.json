@@ -1,0 +1,8 @@
+{
+    "recommendations": [
+        "dbaeumer.vscode-eslint",
+        "sibiraj-s.vscode-scss-formatter",
+        "Vue.volar",
+        "ms-playwright.playwright"
+    ]
+}
