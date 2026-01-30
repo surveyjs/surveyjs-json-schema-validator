@@ -1,7 +1,5 @@
 import { Model, ExpressionErrorType } from "survey-core";
 import express, { Request, Response, NextFunction } from "express";
-import { it } from "node:test";
-import e from "express";
 
 async function validateSchema(schema: JSON): Promise<any[]> {
 
@@ -13,10 +11,7 @@ async function validateSchema(schema: JSON): Promise<any[]> {
   }
 
   for (const item of model.validateExpressions()) {
-    // console.info(item);
     for (const error of item.errors) {
-      // console.info(error);
-
       if (error.errorType === ExpressionErrorType.SyntaxError) {
         result.push({
           type: "expressionsyntaxerror",
@@ -95,37 +90,35 @@ async function main() {
     res.status(200).type("application/json").json({});
   });
 
-  app.post("/survey", (req: Request, res: Response) => {
+  app.post("/response", async (req: Request, res: Response) => {
 
-    const { schema, survey } = req.body;
+    const { schema, response } = req.body;
 
     if (!schema) { res.status(200).type("application/json").json({ error: "schema is required" }); return; }
-    if (!survey) { res.status(200).type("application/json").json({ error: "survey is required" }); return; }
+    if (!response) { res.status(200).type("application/json").json({ error: "response is required" }); return; }
 
-    const model = new Model(schema);
+    const errors = await validateSchema(schema);
 
-    if (model.jsonErrors && model.jsonErrors.length !== 0) {
-      res.status(422).type("application/json").json({ errors: model.jsonErrors });
+    if (errors && errors.length !== 0) {
+      res.status(422).type("application/json").json({ errors: errors });
       return;
     }
 
-    model.data = survey;
+    const model = new Model(schema);
 
-    // model.validate(true, false, (hasErrors) => {
-    //   console.info(hasErrors);
-    // });
+    model.data = response;
 
-    // if (!model.validate()) {
-    //   const errors: any[] = [];
-    //   let questions = model.getAllQuestions(true);
-    //   for (let question of questions) {
-    //     for (const error of question.errors) {
-    //       errors.push(error);
-    //     }
-    //   }
-    //   res.status(400).json({ errors: errors });
-    //   return;
-    // }
+    if (!model.validate()) {
+      const errors: any[] = [];
+      let questions = model.getAllQuestions(true);
+      for (let question of questions) {
+        for (const error of question.errors) {
+          errors.push(error);
+        }
+      }
+      res.status(422).type("application/json").json({ errors: errors });
+      return;
+    }
 
     res.status(200).type("application/json").json({});
   });
