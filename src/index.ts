@@ -16,7 +16,6 @@ async function validateSchema(schema: JSON): Promise<any[]> {
         result.push({
           type: "expressionsyntaxerror",
           message: "Syntax error",
-          description: "",
           propertyName: item.propertyName,
           jsonObj: item.obj,
           element: (<any>item.obj)?.owner || item.obj
@@ -27,7 +26,6 @@ async function validateSchema(schema: JSON): Promise<any[]> {
         result.push({
           type: "expressionunknownvariable",
           message: `Unknown variable: '${error.variableName}'`,
-          description: "",
           propertyName: item.propertyName,
           jsonObj: item.obj,
           element: (<any>item.obj)?.owner || item.obj
@@ -38,7 +36,6 @@ async function validateSchema(schema: JSON): Promise<any[]> {
         result.push({
           type: "expressionunknownfunction",
           message: `Unknown function: '${error.functionName}'`,
-          description: "",
           propertyName: item.propertyName,
           jsonObj: item.obj,
           element: (<any>item.obj)?.owner || item.obj
@@ -48,8 +45,7 @@ async function validateSchema(schema: JSON): Promise<any[]> {
       if (error.errorType === ExpressionErrorType.SemanticError) {
         result.push({
           type: "expressionsemanticerror",
-          message: "Semantic Error",
-          description: "",
+          message: "Semantic error",
           propertyName: item.propertyName,
           jsonObj: item.obj,
           element: (<any>item.obj)?.owner || item.obj
