@@ -25,6 +25,15 @@ npm run dev
 
 Once started, the service is available at `http://localhost:3000`.
 
+### Deploy with Docker
+
+```sh
+docker build -t surveyjs-json-schema-validator .
+docker run -d -p 3000:3000 surveyjs-json-schema-validator
+```
+
+After deployment, the API is accessible at `http://<host>:3000`.
+
 ## API Usage
 
 ### Validate a Survey JSON Schema
