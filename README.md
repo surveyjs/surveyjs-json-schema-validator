@@ -119,3 +119,7 @@ fetch("http://localhost:3000/response", {
 - [Documentation](https://surveyjs.io/documentation)
 - [Live Examples](https://surveyjs.io/form-library/examples/overview)
 - [What's New](https://surveyjs.io/stay-updated/major-updates/2024)
+
+## Licensing
+
+Survey JSON Schema Validator is distributed under the [MIT license](https://github.com/surveyjs/surveyjs-json-schema-validator/blob/master/LISENCE).
