@@ -122,4 +122,4 @@ fetch("http://localhost:3000/response", {
 
 ## Licensing
 
-Survey JSON Schema Validator is distributed under the [MIT license](https://github.com/surveyjs/surveyjs-json-schema-validator/blob/master/LISENCE).
+Survey JSON Schema Validator is distributed under the [MIT license](https://github.com/surveyjs/surveyjs-json-schema-validator/blob/master/LICENSE).
