@@ -118,7 +118,7 @@ fetch("http://localhost:3000/response", {
 - [SurveyJS Website](https://surveyjs.io/)
 - [Documentation](https://surveyjs.io/documentation)
 - [Live Examples](https://surveyjs.io/form-library/examples/overview)
-- [What's New](https://surveyjs.io/stay-updated/major-updates/2024)
+- [What's New](https://surveyjs.io/WhatsNew)
 
 ## Licensing
 
