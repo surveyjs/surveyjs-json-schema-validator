@@ -58,9 +58,9 @@ export function createApp(): Express {
 
     if (sendSchemaErrors(res, result)) return;
 
-    const errors = validateResponse(schema, response);
+    const { valid, errors } = validateResponse(schema, response);
 
-    if (errors.length !== 0) {
+    if (!valid) {
       res.status(422).type("application/json").json({ errors: errors });
       return;
     }

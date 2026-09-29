@@ -83,6 +83,25 @@ describe("POST /response", () => {
     expect(res.body.errors[0].errorOwner.name).toBe("q2");
   });
 
+  test("missing nested answer returns 422", async () => {
+    const res = await post("/response", {
+      schema: { elements: [{ type: "matrixdropdown", name: "m", columns: [{ name: "c1", isRequired: true }], rows: ["r1"] }] },
+      response: { m: { r1: {} } }
+    });
+    expect(res.status).toBe(422);
+    expect(res.body.errors).toHaveLength(1);
+    expect(res.body.errors[0].errorOwner.name).toBe("c1");
+  });
+
+  test("unknown question type returns 422 instead of accepting the response", async () => {
+    const res = await post("/response", {
+      schema: { elements: [{ type: "txet", name: "q1", isRequired: true }] },
+      response: { other: 1 }
+    });
+    expect(res.status).toBe(422);
+    expect(res.body.errors[0].ruleId).toBe("element/unknown-type");
+  });
+
   test("invalid schema returns 422 with linter errors", async () => {
     const res = await post("/response", {
       schema: { elements: [{ type: "text", name: "q1", visibleIf: "{nope} = 1" }] },

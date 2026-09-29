@@ -50,6 +50,15 @@ describe("validateSchema", () => {
     expect(result.warnings.map(f => f.ruleId)).toEqual(["expression/unknown-function"]);
   });
 
+  test.each([
+    ["element/unknown-type", { elements: [{ type: "txet", name: "q1", isRequired: true }] }],
+    ["validator/unknown-type", { elements: [{ type: "text", name: "q1", validators: [{ type: "emial" }] }] }],
+    ["trigger/unknown-type", { elements: [{ type: "text", name: "q1" }], triggers: [{ type: "complte", expression: "{q1} = 1" }] }],
+  ])("unsupported type is an error: %s", (ruleId, schema) => {
+    const result = validateSchema(schema);
+    expect(result.errors.map(f => f.ruleId)).toEqual([ruleId]);
+  });
+
   test("duplicate names", () => {
     const result = validateSchema({
       elements: [{ type: "text", name: "q1" }, { type: "text", name: "q1" }]
@@ -78,13 +87,35 @@ describe("validateResponse", () => {
   };
 
   test("valid response produces no errors", () => {
-    expect(validateResponse(schema, { q1: "a", q2: "b" })).toHaveLength(0);
+    expect(validateResponse(schema, { q1: "a", q2: "b" })).toEqual({ valid: true, errors: [] });
   });
 
   test("missing required answer", () => {
-    const errors = validateResponse(schema, { q1: "a" });
+    const { valid, errors } = validateResponse(schema, { q1: "a" });
+    expect(valid).toBe(false);
     expect(errors).toHaveLength(1);
     expect(errors[0].getErrorType()).toBe("required");
     expect(errors[0].errorOwner.name).toBe("q2");
+  });
+
+  test.each([
+    ["matrix cell", {
+      elements: [{ type: "matrixdropdown", name: "m", columns: [{ name: "c1", isRequired: true }], rows: ["r1"] }]
+    }, { m: { r1: {} } }, "c1", "required"],
+    ["multiple text item", {
+      elements: [{ type: "multipletext", name: "mt", items: [{ name: "i1", isRequired: true }] }]
+    }, { other: 1 }, "i1", "required"],
+    ["dynamic panel question", {
+      elements: [{ type: "paneldynamic", name: "pd", templateElements: [{ type: "text", name: "t1", isRequired: true }] }]
+    }, { pd: [{}] }, "t1", "required"],
+    ["required panel", {
+      elements: [{ type: "panel", name: "p", isRequired: true, elements: [{ type: "text", name: "q1" }] }]
+    }, { other: 1 }, "p", "requireoneanswer"],
+  ])("collects nested errors: %s", (_, nestedSchema, response, ownerName, errorType) => {
+    const { valid, errors } = validateResponse(nestedSchema, response);
+    expect(valid).toBe(false);
+    expect(errors).toHaveLength(1);
+    expect(errors[0].getErrorType()).toBe(errorType);
+    expect(errors[0].errorOwner.name).toBe(ownerName);
   });
 });
