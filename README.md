@@ -1,10 +1,10 @@
-# Survey JSON Schema Validator by SurveyJS
+# SurveyJS Server
 
-A backend service for validating SurveyJS JSON schemas and user responses. Use it to detect configuration errors in survey definitions and verify that collected responses conform to the corresponding survey schema.
+A backend service for SurveyJS forms. Use it to detect configuration errors in survey JSON schemas, verify that collected responses conform to the corresponding schema, generate PDF documents, and read responses from filled-in paper forms.
 
 ## Overview
 
-The SurveyJS JSON Schema Validator helps you:
+SurveyJS Server helps you:
 
 - Validate survey JSON schemas and detect structural, syntactic, and logical errors.
 - Validate user responses against a survey schema, including required questions and data types.
@@ -13,6 +13,15 @@ The SurveyJS JSON Schema Validator helps you:
 - Extract a user response from a scanned, photographed, or PDF copy of a filled-in form by using AI.
 
 The service can be deployed as part of your backend infrastructure and exposed via a simple HTTP API.
+
+| Endpoint | Purpose | Packages |
+| --- | --- | --- |
+| `POST /schema` | [Validate a survey JSON schema](#validate-a-survey-json-schema) | `survey-core` |
+| `POST /response` | [Validate a user response](#validate-a-user-response) | `survey-core` |
+| `POST /pdf` | [Generate a PDF document](#generate-a-pdf-document) | `survey-core`, `survey-pdf` |
+| `POST /extract` | [Extract a response from a filled-in form](#extract-a-response-from-a-filled-in-form) | `survey-core`, `ai-form-response-extractor`, and an AI provider SDK |
+
+Validation requires only `survey-core`. PDF generation and AI extraction are optional: if you do not need them, you can [remove their packages](#remove-the-features-you-do-not-need).
 
 ## Getting Started
 
@@ -54,8 +63,8 @@ npm test
 ### Deploy with Docker
 
 ```sh
-docker build -t surveyjs-json-schema-validator .
-docker run -d -p 3000:3000 surveyjs-json-schema-validator
+docker build -t surveyjs-server .
+docker run -d -p 3000:3000 surveyjs-server
 ```
 
 After deployment, the API is accessible at `http://<host>:3000`.
@@ -63,7 +72,7 @@ After deployment, the API is accessible at `http://<host>:3000`.
 The `.env` file is not copied into the image. To use the `/extract` endpoint, pass the AI settings to the container:
 
 ```sh
-docker run -d -p 3000:3000 --env-file .env surveyjs-json-schema-validator
+docker run -d -p 3000:3000 --env-file .env surveyjs-server
 ```
 
 ## API Usage
@@ -255,6 +264,69 @@ Notes:
 - Signature Pad, HTML, Image, and File Upload questions are not extracted.
 - To help the AI with a particular form or question, add an `aiHint` string to the schema root or to a question. The `/schema` endpoint reports this property as unknown (a warning).
 
+## Remove the Features You Do Not Need
+
+The service installs the packages of all four endpoints. Schema and response validation requires only `survey-core`: the other SurveyJS and AI packages serve the `/pdf` and `/extract` endpoints and can be removed together with them.
+
+| Package | Used for | Can be removed |
+| --- | --- | --- |
+| `survey-core` | Schema and response validation. The `/pdf` and `/extract` endpoints also use it to validate the schema. | No |
+| `express` | The HTTP API | No, unless you call the validation functions from your own code |
+| `survey-pdf` | The `/pdf` endpoint | Yes, if you do not generate PDF documents |
+| `ai-form-response-extractor` | The `/extract` endpoint | Yes, if you do not extract responses |
+| `openai` | The `/extract` endpoint with the OpenAI provider | Yes, if you use Anthropic or Ollama, or do not extract responses |
+| `@anthropic-ai/sdk` | The `/extract` endpoint with the Anthropic provider | Yes, if you use OpenAI or Ollama, or do not extract responses |
+| `sharp` | The `/extract` endpoint: downscales and normalizes images and reads QR codes | Yes, if you do not extract responses |
+
+### Keep Validation Only
+
+```sh
+npm uninstall survey-pdf ai-form-response-extractor openai @anthropic-ai/sdk sharp
+```
+
+Then remove the code that uses these packages, as described in the two sections below. The service keeps the `/schema` and `/response` endpoints and depends on `survey-core` and `express` only.
+
+After that, `src/validator.ts` and `src/settings.ts` import nothing but `survey-core`. To validate schemas and responses inside your own Node.js application instead of over HTTP, copy these two files and call `validateSchema(schema)` and `validateResponse(schema, response)`. In this case, you do not need `express` either.
+
+### Remove PDF Generation
+
+```sh
+npm uninstall survey-pdf
+```
+
+- Delete `src/pdf.ts` and `tests/pdf.test.ts`.
+- In `src/app.ts`, remove the `/pdf` route and the `generatePdf` import.
+- In `src/settings.ts`, remove the `createPdfModel` and `pdfDocOptions` settings and the `survey-pdf` import.
+- In `tests/app.test.ts`, remove the `POST /pdf` tests.
+
+Without `survey-pdf`, the service does not require a commercial SurveyJS license.
+
+### Remove AI Extraction
+
+```sh
+npm uninstall ai-form-response-extractor openai @anthropic-ai/sdk sharp
+```
+
+- Delete `src/extractor.ts`, `src/provider.ts`, `tests/extractor.test.ts`, `tests/provider.test.ts`, and `.env.example`.
+- In `src/app.ts`, remove the `/extract` route, the `express.json()` parser registered for `/extract`, and the imports from `./extractor` and `./provider`.
+- In `src/settings.ts`, remove the `createAiProvider`, `extractionOptions`, and `extractBodyLimit` settings and the imports from `ai-form-response-extractor` and `./provider`.
+- In `src/index.ts`, remove the line that loads the `.env` file.
+- In `tests/app.test.ts`, remove the `POST /extract` tests and the `AiConfigurationError` import.
+
+### Keep AI Extraction with One Provider
+
+The AI provider SDKs are loaded only when a document is processed, so you can uninstall the ones you do not use without changing the code:
+
+| Provider | Uninstall |
+| --- | --- |
+| OpenAI | `npm uninstall @anthropic-ai/sdk` |
+| Anthropic | `npm uninstall openai` |
+| Ollama | `npm uninstall openai @anthropic-ai/sdk` |
+
+Keep `sharp`. It is also loaded on demand, but without it images are sent to the AI provider as they are and QR codes are not detected.
+
+Run `npm run build` and `npm test` after you remove a feature to make sure that nothing refers to the deleted code.
+
 ## Resources
 
 - [SurveyJS Website](https://surveyjs.io/)
@@ -264,8 +336,8 @@ Notes:
 
 ## Licensing
 
-Survey JSON Schema Validator is distributed under the [MIT license](https://github.com/surveyjs/surveyjs-json-schema-validator/blob/master/LICENSE).
+SurveyJS Server is distributed under the [MIT license](https://github.com/surveyjs/surveyjs-server/blob/master/LICENSE).
 
-The `/pdf` endpoint uses SurveyJS PDF Generator, which is not available for free commercial use and requires a [commercial license](https://surveyjs.io/licensing). Without a license key, an alert banner appears at the top of each page in a generated document. To activate your license, follow the instructions on the following page: [How to Remove the Alert Banner](https://surveyjs.io/remove-alert-banner).
+The `/pdf` endpoint uses SurveyJS PDF Generator, which is not available for free commercial use and requires a [commercial license](https://surveyjs.io/licensing). Without a license key, an alert banner appears at the top of each page in a generated document. To activate your license, follow the instructions on the following page: [How to Remove the Alert Banner](https://surveyjs.io/remove-alert-banner). If you do not generate PDF documents, you can [remove this endpoint](#remove-pdf-generation) together with the `survey-pdf` package.
 
 The `/extract` endpoint uses SurveyJS AI Form Response Extractor, which is distributed under the MIT license. Requests to OpenAI and Anthropic are billed by these providers.
