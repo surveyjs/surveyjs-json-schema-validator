@@ -25,6 +25,12 @@ npm run dev
 
 Once started, the service is available at `http://localhost:3000`.
 
+### Run Tests
+
+```sh
+npm test
+```
+
 ### Deploy with Docker
 
 ```sh
@@ -38,13 +44,17 @@ After deployment, the API is accessible at `http://<host>:3000`.
 
 ### Validate a Survey JSON Schema
 
-To validate a survey JSON schema, send it in the body of a POST request to the `/schema` endpoint. If the schema is valid, the response contains an empty object. If validation fails, the response contains an object with an `errors` array describing the detected issues.
+To validate a survey JSON schema, send it in the body of a POST request to the `/schema` endpoint. The schema is checked by the SurveyJS linter (`survey-core/linter`). Each finding contains a `ruleId`, `severity`, `message`, and a `path` into the schema (for example, `elements[0].visibleIf`).
 
-For example, the following request returns three errors:
+- If the schema has no findings, the service returns status 200 and an empty object.
+- If the schema has only warnings, the service returns status 200 and an object with a `warnings` array.
+- If the schema has errors, the service returns status 422 and an object with `errors` and `warnings` arrays.
 
-- Unknown property `someproperty`
-- Unknown variable `somevariable` used in an expression
-- Missing required property `name`
+For example, the following request returns status 422 with two errors and one warning:
+
+- Error: Unknown variable `somevariable` used in an expression (`reference/unknown`)
+- Error: Missing required property `name` (`property/required`)
+- Warning: Unknown property `someproperty` (`property/unknown`)
 
 ```js
 const surveyJson = {
