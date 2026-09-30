@@ -1,5 +1,7 @@
 import { Model, IDataVerificationOptions } from "survey-core";
 import { SurveyPDF, IDocOptions } from "survey-pdf";
+import { LLMProvider, ExtractionOptions } from "ai-form-response-extractor";
+import { createProviderFromEnv } from "./provider";
 
 export interface IValidatorSettings {
   /**
@@ -34,11 +36,36 @@ export interface IValidatorSettings {
    * They specify the page format, orientation, margins, font and other document parameters.
    */
   pdfDocOptions: IDocOptions;
+  /**
+   * Creates an AI provider that reads a filled-in form. It is called for each extraction.
+   *
+   * The default function chooses OpenAI, Anthropic or Ollama by the `AI_PROVIDER`, `AI_MODEL`
+   * and API key environment variables (see the `.env.example` file).
+   * Change this function to use another backend: for example, an API gateway or a mock provider in tests.
+   */
+  createAiProvider: () => LLMProvider;
+  /**
+   * Options passed to the AI Form Response Extractor.
+   *
+   * - `confidenceThreshold` - fields whose confidence is below this value are flagged for review. Default value: `0.75`
+   * - `maxRetries` - the number of extra attempts after an invalid AI response. Default value: `2`
+   * - `preprocessImage` - downscale and normalize images before they are sent to the AI provider. Default value: `true`
+   * - `logCosts` - add token usage to the extraction result. Default value: `false`
+   */
+  extractionOptions: ExtractionOptions;
+  /**
+   * The maximum size of the `/extract` request body. Documents are sent as base64 strings,
+   * which are about a third larger than the original files.
+   */
+  extractBodyLimit: string | number;
 }
 
 export const settings: IValidatorSettings = {
   createModel: (schema: any): Model => new Model(schema),
   setDataOptions: {},
   createPdfModel: (schema: any): SurveyPDF => new SurveyPDF(schema, settings.pdfDocOptions),
-  pdfDocOptions: {}
+  pdfDocOptions: {},
+  createAiProvider: (): LLMProvider => createProviderFromEnv(),
+  extractionOptions: {},
+  extractBodyLimit: "20mb"
 };

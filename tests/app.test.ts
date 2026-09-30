@@ -1,7 +1,9 @@
-import { describe, test, expect, beforeAll, afterAll } from "vitest";
+import { describe, test, expect, beforeAll, afterAll, afterEach } from "vitest";
 import { Server } from "http";
 import { AddressInfo } from "net";
 import { createApp } from "../src/app";
+import { settings } from "../src/settings";
+import { AiConfigurationError } from "../src/provider";
 
 let server: Server;
 let baseUrl: string;
@@ -197,5 +199,119 @@ describe("POST /pdf", () => {
 
   test("missing schema", async () => {
     expect((await post("/pdf", { response: {} })).body.error).toBe("schema is required");
+  });
+});
+
+describe("POST /extract", () => {
+  const schema = {
+    elements: [
+      { type: "text", name: "q1", isRequired: true },
+      { type: "text", name: "q2", isRequired: true }
+    ]
+  };
+  // A 1x1 image
+  const document = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==";
+  const defaultSettings = { ...settings };
+  let calls: any[];
+
+  // Replaces the AI provider with a mock, so that no document leaves the test
+  function useProvider(content: string) {
+    calls = [];
+    settings.createAiProvider = () => ({
+      name: "mock",
+      model: "mock-model",
+      extractFromImage: async (params) => {
+        calls.push(params);
+        return { content };
+      }
+    });
+  }
+
+  afterEach(() => {
+    Object.assign(settings, defaultSettings);
+  });
+
+  test("returns the extracted response", async () => {
+    useProvider(JSON.stringify({ q1: "a", q2: "b", _confidence: { q1: 0.9, q2: 0.5 } }));
+    const res = await post("/extract", { schema, document });
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({
+      data: { q1: "a", q2: "b" },
+      uniqueId: null,
+      confidence: [
+        { fieldName: "q1", value: "a", confidence: 0.9, flagged: false },
+        { fieldName: "q2", value: "b", confidence: 0.5, flagged: true }
+      ]
+    });
+  });
+
+  test("accepts a data URL and an array of pages", async () => {
+    useProvider(JSON.stringify({ q1: "a", q2: "b" }));
+    expect((await post("/extract", { schema, document: "data:image/png;base64," + document })).status).toBe(200);
+    expect(calls).toHaveLength(1);
+    expect((await post("/extract", { schema, document: [document, document] })).body.data).toEqual({ q1: "a", q2: "b" });
+    expect(calls).toHaveLength(2);
+    expect(calls[1].image).toHaveLength(2);
+  });
+
+  test("accepts a document that is larger than the default body limit", async () => {
+    useProvider(JSON.stringify({ q1: "a", q2: "b" }));
+    // Base64 decoding ignores the whitespace
+    const res = await post("/extract", { schema, document: document + " ".repeat(200 * 1024) });
+    expect(res.status).toBe(200);
+    expect(res.body.data).toEqual({ q1: "a", q2: "b" });
+  });
+
+  test.each([
+    ["a file path", "C:\\Windows\\win.ini"],
+    ["a URL", "https://example.com/form.png"],
+    ["a file of another format", Buffer.from("just a text").toString("base64")],
+    ["an empty array", []],
+    ["an array with an invalid page", [document, "https://example.com/form.png"]],
+  ])("%s returns 400 and the AI provider is not called", async (_, invalidDocument) => {
+    useProvider("{}");
+    const res = await post("/extract", { schema, document: invalidDocument });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toBe("INVALID_DOCUMENT");
+    expect(calls).toHaveLength(0);
+  });
+
+  test("returns 503 when the AI provider is not configured", async () => {
+    settings.createAiProvider = () => { throw new AiConfigurationError("OPENAI_API_KEY is not set"); };
+    const res = await post("/extract", { schema, document });
+    expect(res.status).toBe(503);
+    expect(res.body).toEqual({ error: "AI_NOT_CONFIGURED", message: "OPENAI_API_KEY is not set" });
+  });
+
+  test("returns 502 when the extraction fails", async () => {
+    useProvider("not a json");
+    settings.extractionOptions = { maxRetries: 0 };
+    const res = await post("/extract", { schema, document });
+    expect(res.status).toBe(502);
+    expect(res.body.error).toBe("EXTRACTION_FAILED");
+    expect(res.body.details).toContain("Extraction failed after 1 attempts");
+    expect(calls).toHaveLength(1);
+  });
+
+  test("invalid schema returns 422 with linter errors and the AI provider is not called", async () => {
+    useProvider("{}");
+    const res = await post("/extract", {
+      schema: { elements: [{ type: "text", name: "q1", visibleIf: "{nope} = 1" }] },
+      document
+    });
+    expect(res.status).toBe(422);
+    expect(res.body.errors[0].ruleId).toBe("reference/unknown");
+    expect(calls).toHaveLength(0);
+  });
+
+  test("non-object schema returns 400", async () => {
+    const res = await post("/extract", { schema: [1, 2], document });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toBe("INVALID_SCHEMA");
+  });
+
+  test("missing schema or document", async () => {
+    expect((await post("/extract", { document })).body.error).toBe("schema is required");
+    expect((await post("/extract", { schema })).body.error).toBe("document is required");
   });
 });

@@ -1,4 +1,8 @@
+import { existsSync } from "fs";
 import { createApp } from "./app";
+
+// The .env file contains the AI provider settings and API keys. Variables that are already set are not overridden
+if (existsSync(".env")) process.loadEnvFile(".env");
 
 const app = createApp();
 
