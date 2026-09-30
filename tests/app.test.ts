@@ -143,3 +143,59 @@ describe("POST /response", () => {
     expect((await post("/response", { schema })).body.error).toBe("response is required");
   });
 });
+
+describe("POST /pdf", () => {
+  const schema = {
+    elements: [
+      { type: "text", name: "q1", isRequired: true },
+      { type: "text", name: "q2", isRequired: true }
+    ]
+  };
+
+  async function postPdf(body: any) {
+    const res = await fetch(baseUrl + "/pdf", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body)
+    });
+    return { status: res.status, type: res.headers.get("content-type"), body: Buffer.from(await res.arrayBuffer()) };
+  }
+
+  test("schema without a response returns a PDF document", async () => {
+    const res = await postPdf({ schema });
+    expect(res.status).toBe(200);
+    expect(res.type).toBe("application/pdf");
+    expect(res.body.subarray(0, 5).toString("latin1")).toBe("%PDF-");
+  });
+
+  test("schema with a response returns a PDF document", async () => {
+    const res = await postPdf({ schema, response: { q1: "a", q2: "b" } });
+    expect(res.status).toBe(200);
+    expect(res.type).toBe("application/pdf");
+    expect(res.body.subarray(0, 5).toString("latin1")).toBe("%PDF-");
+  });
+
+  test("response is not validated", async () => {
+    const res = await postPdf({ schema, response: { q1: "a", q3: "c" } });
+    expect(res.status).toBe(200);
+    expect(res.type).toBe("application/pdf");
+  });
+
+  test("invalid schema returns 422 with linter errors", async () => {
+    const res = await post("/pdf", {
+      schema: { elements: [{ type: "text", name: "q1", visibleIf: "{nope} = 1" }] }
+    });
+    expect(res.status).toBe(422);
+    expect(res.body.errors[0].ruleId).toBe("reference/unknown");
+  });
+
+  test("non-object schema returns 400", async () => {
+    const res = await post("/pdf", { schema: [1, 2] });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toBe("INVALID_SCHEMA");
+  });
+
+  test("missing schema", async () => {
+    expect((await post("/pdf", { response: {} })).body.error).toBe("schema is required");
+  });
+});

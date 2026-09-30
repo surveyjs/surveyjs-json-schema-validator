@@ -1,5 +1,6 @@
 import express, { Express, Request, Response, NextFunction } from "express";
 import { isSchemaObject, validateSchema, validateResponse, ISchemaValidationResult } from "./validator";
+import { generatePdf } from "./pdf";
 
 function sendInvalidSchema(res: Response) {
   res.status(400).type("application/json").json({
@@ -66,6 +67,20 @@ export function createApp(): Express {
     }
 
     res.status(200).type("application/json").json({});
+  });
+
+  app.post("/pdf", async (req: Request, res: Response) => {
+
+    const { schema, response } = req.body || {};
+
+    if (!schema) { res.status(200).type("application/json").json({ error: "schema is required" }); return; }
+    if (!isSchemaObject(schema)) { sendInvalidSchema(res); return; }
+
+    const result = validateSchema(schema);
+
+    if (sendSchemaErrors(res, result)) return;
+
+    res.status(200).type("application/pdf").send(await generatePdf(schema, response));
   });
 
   return app;

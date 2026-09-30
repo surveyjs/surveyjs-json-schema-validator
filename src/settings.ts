@@ -1,4 +1,5 @@
 import { Model, IDataVerificationOptions } from "survey-core";
+import { SurveyPDF, IDocOptions } from "survey-pdf";
 
 export interface IValidatorSettings {
   /**
@@ -20,9 +21,24 @@ export interface IValidatorSettings {
    * triggers, or other logic applied when the data is loaded. Default value: `false`
    */
   setDataOptions: IDataVerificationOptions;
+  /**
+   * Creates a PDF survey model from a survey JSON schema and sets it up.
+   *
+   * Change this function if the model requires extra setup before a PDF document is generated:
+   * for example, to set the locale, make the document read-only, or apply a theme.
+   * The default function passes `pdfDocOptions` to the model.
+   */
+  createPdfModel: (schema: any) => SurveyPDF;
+  /**
+   * Options passed to the `SurveyPDF` constructor by the default `createPdfModel` function.
+   * They specify the page format, orientation, margins, font and other document parameters.
+   */
+  pdfDocOptions: IDocOptions;
 }
 
 export const settings: IValidatorSettings = {
   createModel: (schema: any): Model => new Model(schema),
-  setDataOptions: {}
+  setDataOptions: {},
+  createPdfModel: (schema: any): SurveyPDF => new SurveyPDF(schema, settings.pdfDocOptions),
+  pdfDocOptions: {}
 };
