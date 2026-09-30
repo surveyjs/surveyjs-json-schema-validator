@@ -1,5 +1,6 @@
-import { Model, PanelModel } from "survey-core";
+import { PanelModel } from "survey-core";
 import { lintSurvey, ILintFinding, ISurveyLintOptions } from "survey-core/linter";
+import { settings } from "./settings";
 
 export interface ISchemaValidationResult {
   errors: ILintFinding[];
@@ -34,9 +35,9 @@ export function validateSchema(schema: any): ISchemaValidationResult {
 }
 
 export function validateResponse(schema: any, response: any): IResponseValidationResult {
-  const model = new Model(schema);
+  const model = settings.createModel(schema);
   // setData() reports the values that don't fit the schema: unknown properties, wrong value types and unavailable choices
-  const dataErrors = model.setData(response);
+  const dataErrors = model.setData(response, settings.setDataOptions);
   const isValidated = model.validate();
 
   const errors: any[] = [...dataErrors];
