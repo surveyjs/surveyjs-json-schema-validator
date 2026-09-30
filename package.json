@@ -15,7 +15,7 @@
   "license": "ISC",
   "dependencies": {
     "express": "^5.2.1",
-    "survey-core": "^3.1.1"
+    "survey-core": "^3.1.2"
   },
   "devDependencies": {
     "@types/express": "^5.0.6",

@@ -35,11 +35,12 @@ export function validateSchema(schema: any): ISchemaValidationResult {
 
 export function validateResponse(schema: any, response: any): IResponseValidationResult {
   const model = new Model(schema);
-  model.data = response;
-  const valid = model.validate();
+  // setData() reports the values that don't fit the schema: unknown properties, wrong value types and unavailable choices
+  const dataErrors = model.setData(response);
+  const isValidated = model.validate();
 
-  const errors: any[] = [];
-  if (!valid) {
+  const errors: any[] = [...dataErrors];
+  if (!isValidated) {
     // getAllErrors() includes the errors of matrix cells, multiple text items and dynamic panel questions
     for (const question of model.getAllQuestions(true)) {
       errors.push(...question.getAllErrors());
@@ -48,5 +49,5 @@ export function validateResponse(schema: any, response: any): IResponseValidatio
       errors.push(...panel.errors);
     }
   }
-  return { valid, errors };
+  return { valid: isValidated && dataErrors.length === 0, errors };
 }

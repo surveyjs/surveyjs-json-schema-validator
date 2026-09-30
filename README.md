@@ -86,7 +86,9 @@ You can also validate a user response against a survey JSON schema. Send a POST 
 - `schema` &ndash; The survey JSON schema.
 - `response` &ndash; The user response object.
 
-The service returns validation errors if the response does not satisfy the schema requirements. In the example below, the request returns a "Response required" error because the required `q2` question is missing from the response.
+The service returns validation errors if the response does not satisfy the schema requirements. The `errors` array also includes data errors: values that do not fit the schema, such as an unknown property, a value of the wrong type, or an unavailable choice. Each data error contains a `type` (`"unknownProperty"`, `"invalidValueType"`, or `"invalidChoiceValue"`), a `path` into the response (for example, `matrix.row1.col1`), the `value`, and the related `question` if there is one.
+
+In the example below, the request returns a "Response required" error because the required `q2` question is missing from the response.
 
 ```js
 const surveyJson = {

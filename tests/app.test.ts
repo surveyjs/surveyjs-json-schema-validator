@@ -93,6 +93,33 @@ describe("POST /response", () => {
     expect(res.body.errors[0].errorOwner.name).toBe("c1");
   });
 
+  test("unavailable choice returns 422 with a data error", async () => {
+    const res = await post("/response", {
+      schema: { elements: [{ type: "radiogroup", name: "q1", choices: ["a", "b"] }] },
+      response: { q1: "c" }
+    });
+    expect(res.status).toBe(422);
+    expect(res.body.errors).toHaveLength(1);
+    expect(res.body.errors[0].type).toBe("invalidChoiceValue");
+    expect(res.body.errors[0].path).toBe("q1");
+    expect(res.body.errors[0].value).toBe("c");
+    expect(res.body.errors[0].question.name).toBe("q1");
+  });
+
+  test("unknown property returns 422 with a data error", async () => {
+    const res = await post("/response", { schema, response: { q1: "a", q2: "b", q3: "c" } });
+    expect(res.status).toBe(422);
+    expect(res.body.errors).toEqual([{ type: "unknownProperty", path: "q3", value: "c" }]);
+  });
+
+  test("data and validation errors are returned together", async () => {
+    const res = await post("/response", { schema, response: { q1: "a", q3: "c" } });
+    expect(res.status).toBe(422);
+    expect(res.body.errors).toHaveLength(2);
+    expect(res.body.errors[0].type).toBe("unknownProperty");
+    expect(res.body.errors[1].errorOwner.name).toBe("q2");
+  });
+
   test("unknown question type returns 422 instead of accepting the response", async () => {
     const res = await post("/response", {
       schema: { elements: [{ type: "txet", name: "q1", isRequired: true }] },
